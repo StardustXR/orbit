@@ -3,16 +3,17 @@ name = "orbit"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 color-eyre = "0.6.2"
-glam = "0.22.0"
+colorgrad = "0.6.2"
+glam = "0.23.0"
 manifest-dir-macros = "0.1.16"
+map-range = "0.1.1"
 mint = "0.5.9"
 rustc-hash = "1.1.0"
-stardust-xr-molecules = "0.19.0"
+stardust-xr-molecules = "0.20.0"
 tokio = "1.24.2"
 
-# [patch.crates-io]
-# stardust-xr-fusion = {path = "../../core/fusion"}
+[patch.crates-io]
+stardust-xr-molecules = {path = "../../molecules"}
+stardust-xr-fusion = {path = "../../core/fusion"}
