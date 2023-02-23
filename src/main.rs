@@ -5,7 +5,7 @@ use std::sync::Arc;
 use color_eyre::eyre::Result;
 use manifest_dir_macros::directory_relative_path;
 use panel::PanelItemUIHandler;
-use stardust_xr_molecules::fusion::{
+use stardust_xr_fusion::{
 	client::{Client, FrameInfo, RootHandler},
 	items::{panel::PanelItem, ItemUI},
 	node::NodeType,

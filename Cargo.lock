@@ -357,6 +357,9 @@ name = "glam"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e4afd9ad95555081e109fe1d21f2a30c691b5f0919c67dfa690a2e1eb6bd51c"
+dependencies = [
+ "mint",
+]
 
 [[package]]
 name = "half"
@@ -600,6 +603,7 @@ dependencies = [
  "map-range",
  "mint",
  "rustc-hash",
+ "stardust-xr-fusion",
  "stardust-xr-molecules",
  "tokio",
 ]
@@ -924,9 +928,9 @@ dependencies = [
 
 [[package]]
 name = "stardust-xr"
-version = "0.10.8"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32a854842c18e2793805deb5071a5deaa093224b29d1ec9802eb93983f56a598"
+checksum = "798fb96a582da0fe0c791cfc10005a5eff3fbe3024e73b139456e63eda1380f4"
 dependencies = [
  "chrono",
  "cluFlock",
@@ -944,15 +948,14 @@ dependencies = [
 
 [[package]]
 name = "stardust-xr-fusion"
-version = "0.36.0"
+version = "0.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d34a8977ee94cf25e4dcd9337465c7abeb008980bb61813b2aeac4438c8449d"
+checksum = "b7f6c2945a8246880297b1f059e48a8eeb6ba39c58f67e83c05725b86f869149"
 dependencies = [
  "anyhow",
  "color-rs",
  "enum_dispatch",
  "flagset",
- "glam 0.22.0",
  "mint",
  "nanoid",
  "parking_lot",
@@ -968,13 +971,12 @@ dependencies = [
 
 [[package]]
 name = "stardust-xr-molecules"
-version = "0.20.0"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ea66987c6acb1586749c42567f51a5da10b3d737989f398668755940cce9a66"
+checksum = "2ae6569520bc27bd6fc015e4e0a687bb730631dc039bb5c5c14c2ad40457cfac"
 dependencies = [
  "color-rs",
- "flexbuffers",
- "glam 0.22.0",
+ "glam 0.23.0",
  "lazy_static",
  "mint",
  "rustc-hash",

@@ -1,20 +1,18 @@
 use map_range::MapRange;
 use rustc_hash::FxHashMap;
-use stardust_xr_molecules::{
-	fusion::{
-		client::FrameInfo,
-		core::values::Transform,
-		drawable::{MaterialParameter, Model, ResourceID},
-		fields::BoxField,
-		items::{
-			panel::{PanelItem, PanelItemHandler, PanelItemInitData, ToplevelInfo},
-			ItemUI, ItemUIHandler,
-		},
-		node::{NodeError, NodeType},
-		HandlerWrapper,
+use stardust_xr_fusion::{
+	client::FrameInfo,
+	core::values::Transform,
+	drawable::{MaterialParameter, Model, ResourceID},
+	fields::BoxField,
+	items::{
+		panel::{PanelItem, PanelItemHandler, PanelItemInitData, ToplevelInfo},
+		ItemUI, ItemUIHandler,
 	},
-	GrabData, Grabbable,
+	node::{NodeError, NodeType},
+	HandlerWrapper,
 };
+use stardust_xr_molecules::{GrabData, Grabbable};
 use std::sync::{Arc, Mutex};
 
 pub struct PanelItemUIHandler {
