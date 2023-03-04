@@ -170,20 +170,19 @@ impl PanelItemUI {
                     } else {
                         (ak, av)
                     }
-                }) else {if !accept{
+                }) else {
 					let _ = model.set_material_parameter(1, "color", MaterialParameter::Color([1.0; 4]));
-				} return};
+					return;
+				};
 
-			if !accept {
-				let gradient = colorgrad::magma();
-				let color =
-					gradient.at(distance.map_range(0.25..MAX_ACCEPT_DISTANCE, 0.0..1.0) as f64);
-				let _ = model.set_material_parameter(
-					1,
-					"color",
-					MaterialParameter::Color(color.to_array().map(|c| c as f32)),
-				);
-			} else if distance < MAX_ACCEPT_DISTANCE {
+			let gradient = colorgrad::magma();
+			let color = gradient.at(distance.map_range(0.25..MAX_ACCEPT_DISTANCE, 0.0..1.0) as f64);
+			let _ = model.set_material_parameter(
+				1,
+				"color",
+				MaterialParameter::Color(color.to_array().map(|c| c as f32)),
+			);
+			if accept && distance < MAX_ACCEPT_DISTANCE {
 				let acceptors = item_ui.acceptors();
 				let Some(acceptor) = acceptors.get(&uid).map(|(a, _)| a) else {return};
 				let _ = acceptor.capture(&panel_item);
