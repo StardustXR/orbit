@@ -115,6 +115,7 @@ impl PanelItemUI {
 	fn update_state(&mut self, captured: bool) {
 		self.captured = captured;
 		let _ = self.model.set_enabled(!captured);
+		let _ = self.grabbable.set_enabled(!captured);
 	}
 	fn frame(&mut self, info: &FrameInfo, item_ui: &ItemUI<PanelItem>) {
 		if self.captured {
