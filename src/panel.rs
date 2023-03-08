@@ -102,6 +102,8 @@ impl PanelItemUI {
 	fn captured(&mut self, _acceptor_uid: &str) {
 		println!("Captured");
 		self.update_state(true);
+		self.grabbable.cancel_linear_velocity();
+		self.grabbable.cancel_angular_velocity();
 	}
 	fn released(&mut self, _acceptor_uid: &str) {
 		println!("Released");
