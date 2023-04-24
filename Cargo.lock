@@ -296,6 +296,9 @@ name = "flagset"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cda653ca797810c02f7ca4b804b40b8b95ae046eb989d356bce17919a8c25499"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "flatbuffers"
@@ -348,9 +351,9 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.23.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e4afd9ad95555081e109fe1d21f2a30c691b5f0919c67dfa690a2e1eb6bd51c"
+checksum = "ad83ab008a4fa3b31dfa713dd41b5a9bdea1e94e4cf1e2fc274ffbd49b0271d3"
 dependencies = [
  "mint",
 ]
@@ -583,7 +586,7 @@ version = "0.1.0"
 dependencies = [
  "color-eyre",
  "colorgrad",
- "glam 0.23.0",
+ "glam 0.24.0",
  "manifest-dir-macros",
  "map-range",
  "mint",
@@ -933,9 +936,9 @@ dependencies = [
 
 [[package]]
 name = "stardust-xr-fusion"
-version = "0.38.1"
+version = "0.39.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45a0a1ee96c4be1d4866e1920feb4fb732b810a6cc2e9f7eeff66f07f9c2f496"
+checksum = "792ac1bb09a2c941fc1b8b1e45da8d549729aa8e0310fd416ca3ddab4a0d589c"
 dependencies = [
  "color-eyre",
  "color-rs",
@@ -956,13 +959,14 @@ dependencies = [
 
 [[package]]
 name = "stardust-xr-molecules"
-version = "0.23.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51a219a9587b25ea083055515213993f2f55abdfa898cc98d7fbc5e7e10c4023"
+checksum = "185291b7cf2368a9ef0deed9e5ebf2c49954e862d2747aeee96cc08a57796c1c"
 dependencies = [
  "color-rs",
- "glam 0.23.0",
+ "glam 0.24.0",
  "lazy_static",
+ "map-range",
  "mint",
  "rustc-hash",
  "serde",

@@ -6,7 +6,7 @@ use stardust_xr_fusion::{
 	drawable::{MaterialParameter, Model, ResourceID},
 	fields::BoxField,
 	items::{
-		panel::{PanelItem, PanelItemHandler, PanelItemInitData, ToplevelInfo},
+		panel::{PanelItem, PanelItemHandler, PanelItemInitData, SurfaceID, ToplevelInfo},
 		ItemUI, ItemUIHandler,
 	},
 	node::{NodeError, NodeType},
@@ -71,7 +71,7 @@ impl PanelItemUI {
 			Transform::default(),
 			[PANEL_WIDTH, PANEL_WIDTH, PANEL_THICKNESS],
 		)?;
-		let grabbable = Grabbable::new(
+		let grabbable = Grabbable::create(
 			&panel_item,
 			Transform::default(),
 			&field,
@@ -123,7 +123,7 @@ impl PanelItemUI {
 		if self.captured {
 			return;
 		}
-		self.grabbable.update(info);
+		self.grabbable.update(info).unwrap();
 		// When we start we want the item to move with the grabbable
 		if self.grabbable.grab_action().actor_started() {
 			let _ = self
@@ -195,6 +195,11 @@ impl PanelItemUI {
 }
 impl PanelItemHandler for PanelItemUI {
 	fn commit_toplevel(&mut self, state: Option<ToplevelInfo>) {
+		if state.is_none() {
+			let _ = self
+				.panel_item
+				.configure_toplevel(Some([0, 0].into()), &vec![], None);
+		}
 		let aspect_ratio = state
 			.as_ref()
 			.map(|t| t.size.y as f32 / t.size.x as f32)
@@ -202,7 +207,9 @@ impl PanelItemHandler for PanelItemUI {
 		let size = [PANEL_WIDTH, PANEL_WIDTH * aspect_ratio, PANEL_THICKNESS];
 		let _ = self.model.set_scale(None, size);
 		let _ = self.field.set_size(size);
-		let _ = self.panel_item.apply_toplevel_material(&self.model, 0);
+		let _ = self
+			.panel_item
+			.apply_surface_material(&SurfaceID::Toplevel, &self.model, 0);
 	}
 }
 impl Drop for PanelItemUI {
