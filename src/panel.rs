@@ -78,12 +78,11 @@ impl PanelItemUI {
 			GrabData::default(),
 		)?;
 		let model = Model::create(
-			grabbable.content_parent(),
+			&panel_item,
 			Transform::from_scale([PANEL_WIDTH, PANEL_WIDTH, PANEL_THICKNESS]),
 			&ResourceID::new_namespaced("orbit", "panel"),
 		)?;
-		field.set_spatial_parent(grabbable.content_parent())?;
-		panel_item.set_spatial_parent(grabbable.content_parent())?;
+		panel_item.set_spatial_parent_in_place(grabbable.content_parent())?;
 
 		let closest_acceptor_distance = Arc::new(Mutex::new((String::new(), f32::MAX)));
 		let _closest_acceptor_distance = closest_acceptor_distance.clone();
@@ -124,16 +123,6 @@ impl PanelItemUI {
 			return;
 		}
 		self.grabbable.update(info).unwrap();
-		// When we start we want the item to move with the grabbable
-		if self.grabbable.grab_action().actor_started() {
-			let _ = self
-				.grabbable
-				.content_parent()
-				.set_transform(Some(&self.panel_item), Transform::identity());
-			let _ = self
-				.panel_item
-				.set_spatial_parent_in_place(self.grabbable.content_parent());
-		}
 		self.update_distances(
 			item_ui,
 			!self.grabbable.grab_action().actor_acting() && self.grabbable.linear_speed().is_some()
@@ -155,8 +144,7 @@ impl PanelItemUI {
 			.map(|(_, f)| f.alias())
 			.collect::<Vec<_>>();
 
-		let Ok(future) = self.grabbable
-            .content_parent()
+		let Ok(future) = self.panel_item
             .field_distance([0.0; 3], fields) else {return};
 		let model = self.model.alias();
 		let item_ui = item_ui.alias();
