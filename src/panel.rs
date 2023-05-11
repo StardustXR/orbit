@@ -162,14 +162,13 @@ impl PanelItemUI {
                         (ak, av)
                     }
                 }) else {
-					let _ = model.set_material_parameter(1, "color", MaterialParameter::Color([1.0; 4]));
+					let _ = model.model_part("Edge").unwrap().set_material_parameter("color", MaterialParameter::Color([1.0; 4]));
 					return;
 				};
 
 			let gradient = colorgrad::magma();
 			let color = gradient.at(distance.map_range(0.25..MAX_ACCEPT_DISTANCE, 0.0..1.0) as f64);
-			let _ = model.set_material_parameter(
-				1,
+			let _ = model.model_part("Edge").unwrap().set_material_parameter(
 				"color",
 				MaterialParameter::Color(color.to_array().map(|c| c as f32)),
 			);
@@ -195,9 +194,10 @@ impl PanelItemHandler for PanelItemUI {
 		let size = [PANEL_WIDTH, PANEL_WIDTH * aspect_ratio, PANEL_THICKNESS];
 		let _ = self.model.set_scale(None, size);
 		let _ = self.field.set_size(size);
-		let _ = self
-			.panel_item
-			.apply_surface_material(&SurfaceID::Toplevel, &self.model, 0);
+		let _ = self.panel_item.apply_surface_material(
+			&SurfaceID::Toplevel,
+			&self.model.model_part("Face").unwrap(),
+		);
 	}
 }
 impl Drop for PanelItemUI {
