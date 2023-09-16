@@ -1,4 +1,5 @@
 use map_range::MapRange;
+use mint::Vector2;
 use rustc_hash::FxHashMap;
 use stardust_xr_fusion::{
 	client::FrameInfo,
@@ -6,13 +7,13 @@ use stardust_xr_fusion::{
 	drawable::{MaterialParameter, Model, ResourceID},
 	fields::BoxField,
 	items::{
-		panel::{PanelItem, PanelItemHandler, PanelItemInitData, SurfaceID, ToplevelInfo},
+		panel::{ChildInfo, Geometry, PanelItem, PanelItemHandler, PanelItemInitData, SurfaceID},
 		ItemUI, ItemUIHandler,
 	},
 	node::{NodeError, NodeType},
 	HandlerWrapper,
 };
-use stardust_xr_molecules::{GrabData, Grabbable};
+use stardust_xr_molecules::{Grabbable, GrabbableSettings};
 use std::sync::{Arc, Mutex};
 
 pub struct PanelItemUIHandler {
@@ -75,13 +76,16 @@ impl PanelItemUI {
 			&panel_item,
 			Transform::default(),
 			&field,
-			GrabData::default(),
+			GrabbableSettings::default(),
 		)?;
 		let model = Model::create(
 			&panel_item,
 			Transform::from_scale([PANEL_WIDTH, PANEL_WIDTH, PANEL_THICKNESS]),
 			&ResourceID::new_namespaced("orbit", "panel"),
 		)?;
+
+		panel_item.auto_size_toplevel()?;
+		panel_item.apply_surface_material(&SurfaceID::Toplevel, &model.model_part("Face")?)?;
 		panel_item.set_spatial_parent_in_place(grabbable.content_parent())?;
 
 		let closest_acceptor_distance = Arc::new(Mutex::new((String::new(), f32::MAX)));
@@ -95,7 +99,7 @@ impl PanelItemUI {
 			grabbable,
 			// update_position_task,
 		};
-		panel_item_ui.commit_toplevel(init_data.toplevel);
+		panel_item_ui.on_resize(init_data.toplevel.size);
 		Ok(panel_item_ui)
 	}
 	fn captured(&mut self, _acceptor_uid: &str) {
@@ -179,26 +183,22 @@ impl PanelItemUI {
 			}
 		});
 	}
-}
-impl PanelItemHandler for PanelItemUI {
-	fn commit_toplevel(&mut self, state: Option<ToplevelInfo>) {
-		if state.is_none() {
-			let _ = self
-				.panel_item
-				.configure_toplevel(Some([0, 0].into()), &vec![], None);
-		}
-		let aspect_ratio = state
-			.as_ref()
-			.map(|t| t.size.y as f32 / t.size.x as f32)
-			.unwrap_or(1.0);
+
+	fn on_resize(&mut self, size: Vector2<u32>) {
+		let aspect_ratio = size.y as f32 / size.x as f32;
 		let size = [PANEL_WIDTH, PANEL_WIDTH * aspect_ratio, PANEL_THICKNESS];
 		let _ = self.model.set_scale(None, size);
 		let _ = self.field.set_size(size);
-		let _ = self.panel_item.apply_surface_material(
-			&SurfaceID::Toplevel,
-			&self.model.model_part("Face").unwrap(),
-		);
 	}
+}
+impl PanelItemHandler for PanelItemUI {
+	fn toplevel_size_changed(&mut self, size: mint::Vector2<u32>) {
+		self.on_resize(size);
+	}
+
+	fn new_child(&mut self, _uid: &str, _info: ChildInfo) {}
+	fn reposition_child(&mut self, _uid: &str, _geometry: Geometry) {}
+	fn drop_child(&mut self, _uid: &str) {}
 }
 impl Drop for PanelItemUI {
 	fn drop(&mut self) {
