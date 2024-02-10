@@ -6,11 +6,17 @@ edition = "2021"
 [dependencies]
 color-eyre = "0.6.2"
 colorgrad = "0.6.2"
-glam = "0.24.0"
+glam = "0.25.0"
 manifest-dir-macros = "0.1.16"
 map-range = "0.1.1"
 mint = "0.5.9"
 rustc-hash = "1.1.0"
-stardust-xr-fusion = "0.43.2"
-stardust-xr-molecules = "0.29.0"
 tokio = "1.25.0"
+
+[dependencies.stardust-xr-fusion]
+git = "https://github.com/StardustXR/core.git"
+# path = "../../core/fusion"
+
+[dependencies.stardust-xr-molecules]
+git = "https://github.com/StardustXR/molecules.git"
+# path = "../../molecules"

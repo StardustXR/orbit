@@ -1,56 +1,80 @@
+use std::sync::{Arc, Mutex};
+
 use map_range::MapRange;
 use mint::Vector2;
 use rustc_hash::FxHashMap;
 use stardust_xr_fusion::{
 	client::FrameInfo,
-	core::values::Transform,
-	drawable::{MaterialParameter, Model, ResourceID},
-	fields::BoxField,
+	core::values::{rgba_linear, ResourceID},
+	drawable::{MaterialParameter, Model, ModelPartAspect},
+	fields::{BoxField, BoxFieldAspect, FieldAspect, UnknownField},
 	items::{
 		panel::{ChildInfo, Geometry, PanelItem, PanelItemHandler, PanelItemInitData, SurfaceID},
-		ItemUI, ItemUIHandler,
+		ItemAcceptor, ItemUIHandler,
 	},
 	node::{NodeError, NodeType},
+	spatial::{SpatialAspect, Transform},
 	HandlerWrapper,
 };
-use stardust_xr_molecules::{Grabbable, GrabbableSettings};
-use std::sync::{Arc, Mutex};
+use stardust_xr_molecules::{multi::multi_node_call, Grabbable, GrabbableSettings};
+use tokio::sync::watch;
 
 pub struct PanelItemUIHandler {
-	item_ui: ItemUI<PanelItem>,
 	items: FxHashMap<String, HandlerWrapper<PanelItem, PanelItemUI>>,
+	acceptors_tx: watch::Sender<FxHashMap<String, (ItemAcceptor<PanelItem>, UnknownField)>>,
+	acceptors_rx: watch::Receiver<FxHashMap<String, (ItemAcceptor<PanelItem>, UnknownField)>>,
 }
 impl PanelItemUIHandler {
-	pub fn new(item_ui: ItemUI<PanelItem>) -> Self {
+	pub fn new() -> Self {
+		let (acceptors_tx, acceptors_rx) = watch::channel(FxHashMap::default());
 		PanelItemUIHandler {
-			item_ui,
 			items: FxHashMap::default(),
+			acceptors_tx,
+			acceptors_rx,
 		}
 	}
 	pub fn frame(&mut self, info: &FrameInfo) {
 		for (_, item) in self.items.iter() {
-			item.lock_wrapped().frame(info, &self.item_ui);
+			item.lock_wrapped().frame(self, info);
 		}
 	}
 }
 impl ItemUIHandler<PanelItem> for PanelItemUIHandler {
-	fn item_created(&mut self, uid: &str, item: PanelItem, init_data: PanelItemInitData) {
-		let Ok(ui) = PanelItemUI::new(item.alias(), init_data) else {return};
-		let Ok(ui) = item.wrap(ui) else {return};
+	fn item_created(&mut self, uid: String, item: PanelItem, init_data: PanelItemInitData) {
+		let Ok(ui) = PanelItemUI::new(item.alias(), init_data, self.acceptors_rx.clone()) else {
+			return;
+		};
+		let Ok(ui) = item.wrap(ui) else { return };
 		self.items.insert(uid.to_string(), ui);
 	}
-	fn item_captured(&mut self, uid: &str, acceptor_uid: &str, _item: PanelItem) {
-		if let Some(ui) = self.items.get(uid) {
-			ui.lock_wrapped().captured(acceptor_uid);
+	fn item_captured(&mut self, uid: String, acceptor_uid: String) {
+		if let Some(ui) = self.items.get(&uid) {
+			ui.lock_wrapped().captured(&acceptor_uid);
 		}
 	}
-	fn item_released(&mut self, uid: &str, acceptor_uid: &str, _item: PanelItem) {
-		if let Some(ui) = self.items.get(uid) {
-			ui.lock_wrapped().released(acceptor_uid);
+	fn item_released(&mut self, uid: String, acceptor_uid: String) {
+		if let Some(ui) = self.items.get(&uid) {
+			ui.lock_wrapped().released(&acceptor_uid);
 		}
 	}
-	fn item_destroyed(&mut self, uid: &str) {
-		self.items.remove(uid);
+	fn item_destroyed(&mut self, uid: String) {
+		self.items.remove(&uid);
+	}
+
+	fn acceptor_created(
+		&mut self,
+		acceptor_uid: String,
+		acceptor: ItemAcceptor<PanelItem>,
+		field: UnknownField,
+	) {
+		self.acceptors_tx.send_modify(|a| {
+			a.insert(acceptor_uid, (acceptor, field));
+		});
+	}
+	fn acceptor_destroyed(&mut self, acceptor_uid: String) {
+		self.acceptors_tx.send_modify(|a| {
+			a.remove(&acceptor_uid);
+		});
 	}
 }
 
@@ -63,18 +87,23 @@ struct PanelItemUI {
 	model: Model,
 	field: BoxField,
 	grabbable: Grabbable,
+	acceptors: watch::Receiver<FxHashMap<String, (ItemAcceptor<PanelItem>, UnknownField)>>,
 	// update_position_task: JoinHandle<()>,
 }
 impl PanelItemUI {
-	fn new(panel_item: PanelItem, init_data: PanelItemInitData) -> Result<Self, NodeError> {
+	fn new(
+		panel_item: PanelItem,
+		init_data: PanelItemInitData,
+		acceptors: watch::Receiver<FxHashMap<String, (ItemAcceptor<PanelItem>, UnknownField)>>,
+	) -> Result<Self, NodeError> {
 		let field = BoxField::create(
 			&panel_item,
-			Transform::default(),
+			Transform::identity(),
 			[PANEL_WIDTH, PANEL_WIDTH, PANEL_THICKNESS],
 		)?;
 		let grabbable = Grabbable::create(
 			&panel_item,
-			Transform::default(),
+			Transform::identity(),
 			&field,
 			GrabbableSettings::default(),
 		)?;
@@ -97,6 +126,7 @@ impl PanelItemUI {
 			model,
 			field,
 			grabbable,
+			acceptors,
 			// update_position_task,
 		};
 		panel_item_ui.on_resize(init_data.toplevel.size);
@@ -114,71 +144,91 @@ impl PanelItemUI {
 		let _ = self
 			.grabbable
 			.content_parent()
-			.set_transform(Some(&self.panel_item), Transform::identity());
-		let _ = self.panel_item.set_transform(None, Transform::identity());
+			.set_relative_transform(&self.panel_item, Transform::identity());
+		let _ = self.panel_item.set_local_transform(Transform::identity());
 	}
 	fn update_state(&mut self, captured: bool) {
 		self.captured = captured;
 		let _ = self.model.set_enabled(!captured);
 		let _ = self.grabbable.set_enabled(!captured);
 	}
-	fn frame(&mut self, info: &FrameInfo, item_ui: &ItemUI<PanelItem>) {
+	fn frame(&mut self, handler: &PanelItemUIHandler, info: &FrameInfo) {
 		if self.captured {
 			return;
 		}
 		self.grabbable.update(info).unwrap();
 		self.update_distances(
-			item_ui,
+			handler,
 			!self.grabbable.grab_action().actor_acting() && self.grabbable.linear_speed().is_some()
 				|| self.grabbable.grab_action().actor_stopped(),
 		);
 	}
 
-	fn update_distances(&self, item_ui: &ItemUI<PanelItem>, accept: bool) {
+	fn update_distances(&self, handler: &PanelItemUIHandler, accept: bool) {
 		if self.captured {
 			return;
 		}
-		let acceptors = item_ui.acceptors();
-		if acceptors.is_empty() {
+		if self.acceptors.borrow().is_empty() {
 			return;
 		}
-		let keys = acceptors.keys().cloned().collect::<Vec<String>>();
+		let keys = handler
+			.acceptors_tx
+			.borrow()
+			.keys()
+			.cloned()
+			.collect::<Vec<String>>();
+		let acceptors = self.acceptors.clone();
+
+		let model = self.model.alias();
+		let panel_item = self.panel_item.alias();
 		let fields = acceptors
+			.borrow()
 			.values()
 			.map(|(_, f)| f.alias())
 			.collect::<Vec<_>>();
-
-		let Ok(future) = self.panel_item
-            .field_distance([0.0; 3], fields) else {return};
-		let model = self.model.alias();
-		let item_ui = item_ui.alias();
-		let panel_item = self.panel_item.alias();
 		tokio::spawn(async move {
-			let Ok(distances) = future.await else {return};
+			let distances = multi_node_call(fields.into_iter(), |f| {
+				let panel_item = panel_item.alias();
+				Ok(async move { f.distance(&panel_item, [0.0; 3]).await })
+			})
+			.await;
 			// dbg!(&distances);
-			let Some((uid, distance)) = keys.into_iter()
-                .zip(distances.into_iter().map(|d| d.map(|d| d.abs())))
-                .filter_map(|(k, v)| Some((k, v?)))
-                .reduce(|(ak, av), (bk, bv)| {
-                    if av > bv {
-                        (bk, bv)
-                    } else {
-                        (ak, av)
-                    }
-                }) else {
-					let _ = model.model_part("Edge").unwrap().set_material_parameter("color", MaterialParameter::Color([1.0; 4]));
-					return;
-				};
+			let Some((uid, distance)) = keys
+				.into_iter()
+				.zip(distances.into_iter().map(|d| d.map(|d| d.abs())))
+				.filter_map(|(k, v)| Some((k, v.ok()?)))
+				.reduce(
+					|(ak, av), (bk, bv)| {
+						if av > bv {
+							(bk, bv)
+						} else {
+							(ak, av)
+						}
+					},
+				)
+			else {
+				let _ = model.model_part("Edge").unwrap().set_material_parameter(
+					"color",
+					MaterialParameter::Color(rgba_linear!(1.0, 1.0, 1.0, 1.0)),
+				);
+				return;
+			};
 
 			let gradient = colorgrad::magma();
 			let color = gradient.at(distance.map_range(0.25..MAX_ACCEPT_DISTANCE, 0.0..1.0) as f64);
 			let _ = model.model_part("Edge").unwrap().set_material_parameter(
 				"color",
-				MaterialParameter::Color(color.to_array().map(|c| c as f32)),
+				MaterialParameter::Color(rgba_linear!(
+					color.r as f32,
+					color.g as f32,
+					color.b as f32,
+					color.a as f32
+				)),
 			);
 			if accept && distance < MAX_ACCEPT_DISTANCE {
-				let acceptors = item_ui.acceptors();
-				let Some(acceptor) = acceptors.get(&uid).map(|(a, _)| a) else {return};
+				let Some(acceptor) = acceptors.borrow().get(&uid).map(|(a, _)| a.alias()) else {
+					return;
+				};
 				let _ = acceptor.capture(&panel_item);
 			}
 		});
@@ -187,7 +237,7 @@ impl PanelItemUI {
 	fn on_resize(&mut self, size: Vector2<u32>) {
 		let aspect_ratio = size.y as f32 / size.x as f32;
 		let size = [PANEL_WIDTH, PANEL_WIDTH * aspect_ratio, PANEL_THICKNESS];
-		let _ = self.model.set_scale(None, size);
+		let _ = self.model.set_local_transform(Transform::from_scale(size));
 		let _ = self.field.set_size(size);
 	}
 }
